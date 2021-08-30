@@ -1,0 +1,50 @@
+# {{ ansible_managed }}
+
+<VirtualHost *:{{ reverse_http_port }}>
+	ServerName {{ item.servername }}:{{ reverse_http_port }}
+	Redirect permanent / https://{{ item.servername }}
+	RewriteEngine on
+	RewriteCond %{SERVER_NAME} ={{ item.servername }}
+	RewriteRule ^ https://%{SERVER_NAME}%{REQUEST_URI} [END,NE,R=permanent]
+	CustomLog /var/log/httpd/{{ item.vhost_id }}-{{ item.vhost_name }}_access.log common
+	ErrorLog /var/log/httpd/{{ item.vhost_id }}-{{ item.vhost_name }}_error.log
+</VirtualHost>
+
+<VirtualHost *:{{ reverse_https_port }}>
+	ServerName {{ item.servername }}:{{ reverse_https_port }}
+	ServerAlias {{ item.servername }}
+	CustomLog /var/log/httpd/{{ item.vhost_id }}-{{ item.vhost_name }}_access_ssl.log common
+	ErrorLog /var/log/httpd/{{ item.vhost_id }}-{{ item.vhost_name }}_error_ssl.log
+
+	ServerAdmin {{ reverse_serveradmin }}
+	Include /etc/letsencrypt/options-ssl-apache.conf
+
+	{% if item.specific_directives |default('pouet') != 'pouet' %}
+	{% for directive in item.specific_directives %}
+
+	{% include directive %}
+
+	{% endfor %}
+	{% endif %}
+
+    # Encoded slashes need to be allowed
+	AllowEncodedSlashes             {{ item.allowencodedslashes|default('NoDecode') }}
+
+	RequestHeader set X-Forwarded-Proto "https"
+	RequestHeader set X-Forwarded-Port "443"
+	SSLProxyEngine On
+	SSLProxyVerify     None
+	SSLProxyCheckPeerCN Off
+	SSLProxyCheckPeerName Off
+	RewriteEngine On
+	# keep the host
+	ProxyPreserveHost On
+
+	ProxyPass / {{ item.proxy_pass_url }}:{{ item.proxy_pass_port }}/ {%if item.nocanon|default('nope')  != 'nope' %}nocanon{%endif%}
+
+	ProxyPassReverse / {{ item.proxy_pass_url }}:{{ item.proxy_pass_port }}/
+
+    SSLCertificateFile /etc/letsencrypt/live/{{ item.servername }}/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/{{ item.servername }}/privkey.pem
+
+</VirtualHost>

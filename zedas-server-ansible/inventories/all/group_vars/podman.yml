@@ -1,0 +1,42 @@
+---
+## podman group vars
+
+disks:
+  - /dev/sdb
+
+# comma separated
+pvs: /dev/sdb1
+
+pods:
+  - jenkins:
+    image: 'jenkins/jenkins:lts'
+    lv: lv_jenkins
+    rootdir: /srv/jenkins
+    dockerfile: srv_jenkins_dockerfile.j2
+    compose_template: srv_jenkins_container__compose.yml.j2
+    lv_size: 10g
+    volume_path:
+      - /srv/jenkins/jenkins_data
+    volume_owner: jenkins
+    volume_owner_uid: 1300
+    volume_group: jenkins
+    volume_group_gid: 1300
+  - gitea:
+    lv: lv_gitea
+    image: gitea/gitea:<versiontag>
+    rootdir: /srv/gitea
+    compose_template: srv_gitea_container__compose.yml.j2
+    lv_size: 10g
+    volume_path:
+      - /srv/gitea/data
+    volume_owner: gitea
+    volume_owner_uid: 1400
+    volume_group: gitea
+    volume_group_gid: 1400
+    db_type: postgres
+    db_host: postgres:5432
+    db_name: databasename
+    db_user: databaseuser
+    db_passwd: .............
+
+

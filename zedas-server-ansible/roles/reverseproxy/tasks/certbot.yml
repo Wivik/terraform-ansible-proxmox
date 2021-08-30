@@ -1,0 +1,16 @@
+---
+## cerbot specific loop for certificate delivery
+
+- name: "Check presence of the certificate for {{ item.servername }}"
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ item.servername }}/fullchain.pem"
+  register: reverse_stat_fullchain
+
+- name: "Check presence of the private key"
+  ansible.builtin.stat:
+    path: "/etc/letsencrypt/live/{{ item.servername }}/privkey.pem"
+  register: reverse_stat_privkey
+
+- name: "Ask a certificate if no one available"
+  command: "certbot certonly --webroot-path /var/www/html -d {{ item.servername }} --apache"
+  when: not reverse_stat_fullchain.stat.exists and not reverse_stat_privkey.stat.exists

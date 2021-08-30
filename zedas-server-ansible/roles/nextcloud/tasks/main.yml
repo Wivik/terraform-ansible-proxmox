@@ -1,0 +1,108 @@
+---
+# tasks file for nextcloud
+
+- name: "Test OS"
+  ansible.builtin.assert:
+    that:
+        - ansible_os_family in ['RedHat']
+    msg: "Unsupported OS"
+
+- name: "Enabled and start the redis service"
+  ansible.builtin.systemd:
+    name: redis
+    state: started
+    enabled: yes
+
+- name: "Test if NC already deployed"
+  ansible.builtin.stat:
+    path: "{{ nc_root}}/.already_installed"
+  register: test_installed
+
+- name: "Download NC archive"
+  ansible.builtin.get_url:
+    url: "{{ nc_archive_base_url }}/nextcloud-{{ nextcloud['version'] }}.zip"
+    dest: /tmp
+  when: not test_installed.stat.exists
+
+- name: "Install unzip command"
+  ansible.builtin.dnf:
+    name: unzip
+    state: present
+
+- name: "Unarchive NC sources"
+  ansible.builtin.unarchive:
+    src: "/tmp/nextcloud-{{ nextcloud['version'] }}.zip"
+    dest: "{{ nc_root }}"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    mode: '0755'
+    remote_src: true
+  when: not test_installed.stat.exists
+
+- name: "Put installed flaag"
+  ansible.builtin.copy:
+    dest: "{{ nc_root}}/.already_installed"
+    content: "done"
+  when: not test_installed.stat.exists
+
+- name: "Create data directory"
+  ansible.builtin.file:
+    state: directory
+    path: "{{ nc_root }}/nextcloud/data"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+
+- name: "SELinux Allow httpd to write files"
+  ansible.builtin.sefcontext:
+    target: "{{ item }}"
+    setype: httpd_sys_rw_content_t
+    state: present
+  register: nc_set_se_context
+  with_items:
+    - "{{ nc_root }}/nextcloud/data(/.*)?"
+    - "{{ nc_root }}/nextcloud/config(/.*)?"
+    - "{{ nc_root }}/nextcloud/apps(/.*)?"
+    - "{{ nc_root }}/nextcloud/.htaccess"
+    - "{{ nc_root }}/nextcloud/.user.ini"
+    - "{{ nc_root }}/nextcloud/3rdparty/aws/aws-sdk-php/src/data/logs(/.*)?"
+
+- name: "Restore SELinux context"
+  ansible.builtin.command: "restorecon -R '{{ nc_root }}/nextcloud/'"
+  when: nc_set_se_context.changed
+
+- name: "SELinux Set httpd_can_network_connect flag on and keep it persistent across reboots"
+  ansible.posix.seboolean:
+    name: httpd_can_network_connect
+    state: yes
+    persistent: yes
+
+- name: "Setup fail2ban jail"
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+  with_items:
+    - { src: etc_fail2ban_jail.d_nextcloud.local.j2, dest: /etc/fail2ban/jail.d/nextcloud.local }
+  notify:
+    - "Restart fail2ban"
+
+- name: "Setup fail2ban filter"
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+  with_items:
+    - { src: etc_fail2ban_filter.d_nextcloud.conf, dest: /etc/fail2ban/filter.d/nextcloud.conf }
+  notify:
+    - "Restart fail2ban"
+
+- name: "Deploy config.php"
+  ansible.builtin.template:
+    src: srv_nextcloud_nextcloud_config.php.j2
+    dest: "{{ nc_root }}/nextcloud/config/config.php"
+    owner: apache
+    group: apache
+    mode: '0640'
+

@@ -1,0 +1,9 @@
+---
+# defaults file for nextcloud
+
+nc_root: /srv/nextcloud
+apache_user: apache
+apache_group: apache
+
+nc_archive_base_url: https://download.nextcloud.com/server/releases/
+

@@ -1,0 +1,25 @@
+version: "3"
+
+networks:
+  gitea:
+    external: false
+
+services:
+  server:
+    image: {{ item.image }}
+    environment:
+      - USER_UID={{ item.volume_owner_uid }}
+      - USER_GID={{ item.volume_group_gid }}
+      - DB_TYPE={{ item.db_type }}
+      - DB_HOST={{ item.db_host }}
+      - DB_NAME={{ item.db_name }}
+      - DB_USER={{ item.db_user }}
+      - DB_PASSWD={{ item.db_passwd }}
+    restart: always
+    networks:
+      - gitea
+    volumes:
+      - /srv/gitea/data:/data:Z
+    ports:
+      - "3000:3000"
+      - "222:22"

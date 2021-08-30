@@ -1,0 +1,7 @@
+# ansible required collections
+---
+
+collections:
+  - community.general
+  - ansible.posix
+

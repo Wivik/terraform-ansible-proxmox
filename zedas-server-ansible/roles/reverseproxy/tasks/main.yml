@@ -1,0 +1,75 @@
+---
+# tasks file for reverseproxy
+
+- name: "Ensure OS is compatible"
+  assert:
+    that:
+      - ansible_os_family in ['RedHat']
+    fail_msg: "This role was not validated for this OS"
+
+- name: "Install required packages"
+  dnf:
+    name: "{{ reverse_packages_to_install }}"
+    state: latest
+
+- name: "Enabled snapd for certbot"
+  systemd:
+    name: snapd
+    state: started
+    enabled: yes
+
+- name: "Create symlink for snapd"
+  file:
+    src: /var/lib/snapd/snap
+    dest: /snap
+    state: link
+
+- name: "Install certbot with snapd"
+  community.general.snap:
+    name: certbot
+    state: present
+
+- name: "Create certbot symlink"
+  file:
+    src: /snap/bin/certbot
+    dest: /usr/bin/certbot
+    state: link
+
+- name: "SELinux Set httpd_can_network_connect flag on and keep it persistent across reboots"
+  ansible.posix.seboolean:
+    name: httpd_can_network_connect
+    state: yes
+    persistent: yes
+
+- name: "Deploy default vhost"
+  template:
+    src: etc_httpd_conf_d_000-default.conf.j2
+    dest: "/etc/httpd/conf.d/000-default.conf"
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - "Reload httpd"
+
+- name: "Include certbot task"
+  include_tasks: certbot.yml
+  with_items:
+    - "{{ vhosts }}"
+
+- name: "Deploy vhosts"
+  template:
+    src: etc_httpd_conf_d_999-xxx.conf.j2
+    dest: "/etc/httpd/conf.d/{{ item.vhost_id }}-{{ item.vhost_name }}.conf"
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - "{{ vhosts }}"
+  notify:
+    - "Reload httpd"
+
+- name: "Ensure httpd is started and enabled"
+  systemd:
+    name: httpd
+    state: started
+    enabled: yes

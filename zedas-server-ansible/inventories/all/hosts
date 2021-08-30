@@ -1,0 +1,12 @@
+[proxy]
+<reverse_proxy_servername>
+
+[web]
+<webserver_servername>
+
+[db]
+<database_server>
+
+[podman]
+<podman_server>
+

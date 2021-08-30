@@ -1,0 +1,129 @@
+---
+- hosts: all
+  become: yes
+  become_user: root
+  vars:
+    users_to_create:
+        - { name: jenkins, home: /var/lib/jenkins, uid: 1300 }
+    services_to_disable_centos:
+        - firewalld
+    packages_to_install_centos:
+        - java-11-openjdk
+        - htop
+        - lvm2
+        - mlocate
+        - vim
+        - lsof
+        - fail2ban
+        - rclone
+        - git
+    packages_to_install_debian:
+        - openjdk-11-jre
+        - htop
+        - lvm2
+        - mlocate
+        - vim
+        - lsof
+    # packages_to_install_debian:
+    #     - openjdk-11-jre
+    #     - htop
+
+  tasks:
+    - name: "Setup server hostname"
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+
+    - name: "Update /etc/hosts, that's creepy yes"
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "{{ item.ip }} {{ item.name }}"
+      with_items:
+        - "{{ hosts_vm }}"
+
+    - name: "Set timezone"
+      community.general.timezone:
+        name: Europe/Paris
+
+    - name: "Create usernames"
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        home: "{{ item.home }}"
+        uid: "{{ item.uid }}"
+        create_home: yes
+      with_items: "{{ users_to_create }}"
+      when:
+        - inventory_hostname not in groups['podman']
+
+    # - name: "Add Jenkins in wheel group for CentOS"
+    #   ansible.builtin.user:
+    #     name: jenkins
+    #     groups: wheel
+    #   when: ansible_os_family in ['RedHat']
+
+    # - name: "Add Jenkins in sudo group for Debian"
+    #   ansible.builtin.user:
+    #     name: jenkins
+    #     groups: sudo
+    #   when: ansible_os_family in ['Debian']
+
+    - name: "Add Jenkins pubkey"
+      ansible.posix.authorized_key:
+        user: jenkins
+        state: present
+        key: "{{ jenkins_pubkey }}"
+
+    - name: "Deploy Jenkins sudoers"
+      copy:
+        content: "jenkins ALL=(ALL) NOPASSWD:ALL"
+        dest: /etc/sudoers.d/jenkins
+        owner: root
+        group: root
+        mode: '0440'
+
+    # - name: "Disable unrequired services"
+    #   service:
+    #     name: "{{ item }}"
+    #     state: stopped
+    #     enabled: no
+    #   with_items: "{{ services_to_disable_centos }}"
+    #   when: ansible_os_family in ['RedHat']
+
+    - name: "Install EPEL repo (CentOS)"
+      ansible.builtin.dnf:
+        name:  epel-release
+        state: present
+      when: ansible_os_family in ['RedHat']
+
+    - name: "Install packages (CentOS)"
+      ansible.builtin.dnf:
+        name: "{{ packages_to_install_centos }}"
+        state: present
+      when: ansible_os_family in ['RedHat']
+
+    - name: "Install packages (Debian)"
+      ansible.builtin.apt:
+        name: "{{ packages_to_install_debian }}"
+        state: present
+      when: ansible_os_family in ['Debian']
+
+    - name: "Ensure VM is up to date"
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+      when: ansible_os_family in ['RedHat']
+
+    - name: "Ensure VM is up to date"
+      ansible.builtin.apt:
+        name: "*"
+        state: latest
+      when: ansible_os_family in ['Debian']
+
+    - name: "Enable fail2ban service"
+      systemd:
+        name: fail2ban
+        state: started
+        enabled: yes
+
+
+
+

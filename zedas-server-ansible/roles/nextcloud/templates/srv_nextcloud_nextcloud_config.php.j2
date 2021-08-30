@@ -1,0 +1,23 @@
+<?php
+$CONFIG = array (
+  'instanceid' => '{{ nextcloud['config'].instanceid }}',
+  'passwordsalt' => '{{ nextcloud['config'].passwordsalt }}',
+  'secret' => '{{ nextcloud['config'].secret }}',
+  'trusted_proxies' => '{{ groups['proxy'] |first }}',
+  'trusted_domains' =>
+  array (
+    0 => '{{ nextcloud.servername }}',
+  ),
+  'datadirectory' => '{{ nc_root }}/nextcloud/data',
+  'dbtype' => 'pgsql',
+  'version' => '20.0.8.1',
+  'overwrite.cli.url' => 'https://{{ nextcloud.servername }}',
+  'overwriteprotocol' => 'https',
+  'dbname' => '{{ nextcloud.db_name }}',
+  'dbhost' => '{{ nextcloud.db_host }}',
+  'dbport' => '',
+  'dbtableprefix' => 'oc_',
+  'dbuser' => '{{ nextcloud.db_user }}',
+  'dbpassword' => '{{ nextcloud.db_pass }}',
+  'installed' => true,
+);

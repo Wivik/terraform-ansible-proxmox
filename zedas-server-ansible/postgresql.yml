@@ -1,0 +1,9 @@
+---
+- hosts: db
+  become: yes
+  become_user: root
+
+  roles:
+    - role: roles/setup_postgresql
+    - role: roles/ansible-role-postgresql
+    - role: roles/postinstall_postgresql

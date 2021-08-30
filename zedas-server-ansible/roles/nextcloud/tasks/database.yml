@@ -1,0 +1,33 @@
+---
+
+## database tasks"
+
+- name: "Ensure python PG library is available"
+  yum:
+    name: python3-psycopg2
+    state: present
+
+- name: "Create database user"
+  become: yes
+  become_user: postgres
+  postgresql_user:
+    name: "{{ nc_database_user }}"
+    password: "{{ nc_database_passwd }}"
+
+- name: "Create database"
+  become: yes
+  become_user: postgres
+  postgresql_db:
+    name: "{{ nc_database_name }}"
+    owner: "{{ nc_database_user }}"
+    template: template0
+
+- name: "Grant privileges to user"
+  become: yes
+  become_user: postgres
+  postgresql_privs:
+    db: "{{ nc_database_name }}"
+    privs: ALL
+    type: database
+    role: "{{ nc_database_user }}"
+

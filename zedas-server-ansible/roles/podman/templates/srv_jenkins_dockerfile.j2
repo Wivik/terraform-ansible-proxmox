@@ -1,0 +1,4 @@
+# {{ ansible_managed }}
+FROM {{ item.image }}
+ARG uid={{ item.volume_owner_uid }}
+ARG gid={{ item.volume_group_gid }}

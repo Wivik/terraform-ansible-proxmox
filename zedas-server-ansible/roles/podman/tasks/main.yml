@@ -1,0 +1,150 @@
+---
+# tasks file for podman
+- name: "Ensure OS is compatible"
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family in ['RedHat']
+    fail_msg: "This role was not validated for this OS"
+
+## filesystem management
+
+- name: "Create root dirs"
+  ansible.builtin.file:
+    path: "{{ item.rootdir }}"
+    state: directory
+  with_items:
+    - "{{ pods }}"
+
+- name: "Format disks for lvm"
+  community.general.parted:
+    device: "{{ item }}"
+    number: 1
+    state: present
+    flags: [ lvm ]
+  with_items:
+    - "{{ disks }}"
+
+- name: "Create volume group"
+  community.general.lvg:
+    vg: "{{ podman_vg_name }}"
+    pvs: "{{ pvs }}"
+
+- name: "Create vhosts lv"
+  community.general.lvol:
+    vg: "{{ podman_vg_name }}"
+    lv: "{{ item.lv }}"
+    size: "{{ item.lv_size }}"
+  with_items:
+    - "{{ pods }}"
+
+- name: "Format lv"
+  community.general.filesystem:
+    dev: "/dev/{{ podman_vg_name }}/{{ item.lv }}"
+    fstype: ext4
+  with_items:
+    - "{{ pods }}"
+
+- name: "Add vhosts filesystems to fstab"
+  ansible.posix.mount:
+    path: "{{ item.rootdir }}"
+    src: "/dev/{{ podman_vg_name }}/{{ item.lv }}"
+    fstype: ext4
+    state: mounted
+  with_items:
+    - "{{ pods }}"
+
+## SELinux
+- name: "Apply SELinux context"
+  community.general.sefcontext:
+    target: "{{  item.rootdir }}(/.*)?"
+    setype: container_var_lib_t
+    state: present
+  register: podman_selinux_setcontext
+  with_items:
+    - "{{ pods }}"
+
+- name: "Set secontext for jenkins ssh"
+  community.general.sefcontext:
+    target: "{{ item.rootdir }}/.ssh(/.*)?"
+    setype: ssh_home_t
+    state: present
+  register: podman_selinux_setcontext_jenkins
+  with_items:
+    - "{{ pods }}"
+  when:
+    - item.rootdir == '/srv/jenkins'
+
+## container users
+
+- name: "Create applicative groups for volumes"
+  ansible.builtin.group:
+    name: "{{ item.volume_group }}"
+    gid: "{{ item.volume_group_gid }}"
+  with_items:
+    - "{{ pods }}"
+
+- name: "Create applicative users for volumes"
+  ansible.builtin.user:
+    name: "{{ item.volume_owner }}"
+    home: "{{ item.rootdir }}"
+    uid: "{{ item.volume_owner_uid }}"
+    group: "{{ item.volume_group }}"
+  with_items:
+    - "{{ pods }}"
+
+## podman main
+
+- name: "Install required packages"
+  ansible.builtin.dnf:
+    name: "{{ podman_packages }}"
+    state: latest
+
+## podman images management
+
+- name: "Pull images"
+  containers.podman.podman_image:
+    name: "{{ item.image }}"
+    state: present
+  with_items:
+    - "{{ pods }}"
+
+- name: "Deploy Dockerfiles"
+  ansible.builtin.template:
+    src: "{{ item.dockerfile }}"
+    dest: "{{ item.rootdir }}/{{ item.dockerfile_dist | default(podman_dockerfile) }}"
+    owner: "{{ item.volume_owner }}"
+    group: "{{ item.volume_group }}"
+    mode: '0400'
+  with_items:
+    - "{{ pods }}"
+  when:
+    - item.dockerfile |default('pouet') != 'pouet'
+
+- name: "Deploy podman-compose files"
+  ansible.builtin.template:
+    src: "{{ item.compose_template }}"
+    dest: "{{ item.rootdir }}/{{ item.compose_file | default(podman_compose_file) }}"
+    owner: "{{ item.volume_owner }}"
+    group: "{{ item.volume_group }}"
+    mode: '0400'
+  with_items:
+    - "{{ pods }}"
+
+- name: "Create volume directories"
+  ansible.builtin.file:
+    state: directory
+    path: "{{ item.1 }}"
+    owner: "{{ item.0.volume_owner }}"
+    group: "{{ item.0.volume_group }}"
+  with_subelements:
+    - "{{ pods }}"
+    - volume_path
+
+- name: "Restore SELinux context"
+  ansible.builtin.command: "restorecon -irv {{ item.rootdir }}"
+  with_items:
+    - "{{ pods }}"
+  when: podman_selinux_setcontext.changed or podman_selinux_setcontext_jenkins.changed
+
+
+

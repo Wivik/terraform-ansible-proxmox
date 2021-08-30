@@ -1,0 +1,56 @@
+---
+
+- name: "Test if NC already deployed"
+  stat:
+    path: "{{ nc_web_root}}/nextcloud/.already_installed"
+  register: test_installed
+
+- name: "Unarchive NC sources"
+  unarchive:
+    src: nextcloud-17.0.2.zip
+    dest: "{{ nc_web_root }}"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+    mode: '0755'
+  when: not test_installed.stat.exists
+
+- name: "Put installed flaag"
+  copy:
+    dest: "{{ nc_web_root}}/nextcloud/.already_installed"
+    content: "done"
+  when: not test_installed.stat.exists
+
+- name: "Create data directory"
+  file:
+    state: directory
+    path: "{{ nc_web_root }}/nextcloud/data"
+    owner: "{{ apache_user }}"
+    group: "{{ apache_group }}"
+
+- name: "SELinux Allow httpd to write files"
+  sefcontext:
+    target: "{{ item }}"
+    setype: httpd_sys_rw_content_t
+    state: present
+  with_items:
+    - "{{ nc_web_root }}/nextcloud/data(/.*)?"
+    - "{{ nc_web_root }}/nextcloud/config(/.*)?"
+    - "{{ nc_web_root }}/nextcloud/apps(/.*)?"
+    - "{{ nc_web_root }}/nextcloud/.htaccess"
+    - "{{ nc_web_root }}/nextcloud/.user.ini"
+    - "{{ nc_web_root }}/nextcloud/3rdparty/aws/aws-sdk-php/src/data/logs(/.*)?"
+
+- name: "Restore SELinux context"
+  command: "restorecon -R '{{ nc_web_root }}/nextcloud/'"
+
+- name: "SELinux Set httpd_can_network_connect flag on and keep it persistent across reboots"
+  seboolean:
+    name: httpd_can_network_connect
+    state: yes
+    persistent: yes
+
+
+
+
+
+

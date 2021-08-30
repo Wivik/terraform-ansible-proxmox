@@ -1,0 +1,12 @@
+---
+# defaults file for reverseproxy
+webserver_base_port: '10'
+webserver_serveradmin: admin@server.fr
+webserver_packages_to_install: ['httpd', 'python3-psycopg2', ' yum-utils', 'redis', 'fail2ban']
+webserver_php_packages: ['php74-php', 'php74-php-gd', 'php74-php-mbstring', 'php74-php-intl', 'php74-php-pecl-apcu', 'php74-php-opcache', 'php74-php-json', 'php74-php-zip', 'php74-php-pgsql', 'php74-php-pdo', 'php74-php-curl', 'php74-php-tokenizer', 'php74-php-dom', 'php74-php-fileinfo', 'php74-php-iconv', 'php74-php-pcntl', 'php74-php-posix', 'php74-php-exif', 'php74-php-openssl', 'php74-php-redis', 'php74-php-imagick', 'php74-php-bcmath', 'php74-php-gmp']
+webserver_httpd_conf: /etc/httpd/conf/httpd.conf
+webserver_vg_name: vg_webserver
+
+webserver_php_memory: 512M
+
+

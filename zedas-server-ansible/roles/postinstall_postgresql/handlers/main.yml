@@ -1,0 +1,8 @@
+---
+# handlers file for postgresql
+
+- name: "Restart pgsql"
+  systemd:
+    name: "postgresql-{{ postgresql_version }}"
+    state: restarted
+

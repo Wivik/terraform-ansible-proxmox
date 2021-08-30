@@ -1,0 +1,29 @@
+# {{ ansible_managed }}
+
+Listen {{ webserver_base_port }}{{ item.id }}
+
+<VirtualHost *:{{ webserver_base_port }}{{ item.id }}>
+        ServerName {{ item.name }}
+        CustomLog /var/log/httpd/{{ item.id }}-{{ item.name }}_access.log common
+        ErrorLog /var/log/httpd/{{ item.id }}-{{ item.name }}_error.log
+        DocumentRoot {{ item.documentroot }}
+        ServerAdmin {{ webserver_serveradmin }}
+
+        # Encoded slashes need to be allowed
+        AllowEncodedSlashes             On
+        <Directory />
+                Options MultiViews FollowSymLinks
+                AllowOverride All
+                Require all granted
+        </Directory>
+
+
+	{% if item.specific_directives |default('pouet') != 'pouet' %}
+	{% for directive in item.specific_directives %}
+
+	{% include directive %}
+
+	{% endfor %}
+	{% endif %}
+
+</VirtualHost>

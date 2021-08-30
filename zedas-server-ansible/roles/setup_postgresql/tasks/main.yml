@@ -1,0 +1,52 @@
+---
+# tasks file for postgresql
+
+- name: "Test OS"
+  ansible.builtin.assert:
+    that:
+        - ansible_os_family in ['RedHat']
+    msg: "Unsupported OS"
+
+- name: "Ensure python PG library is available"
+  ansible.builtin.dnf:
+    name: python3-psycopg2
+    state: present
+
+- name: "Format disks for lvm"
+  community.general.parted:
+    device: "{{ item }}"
+    number: 1
+    state: present
+    flags: [ lvm ]
+  with_items:
+    - "{{ disks }}"
+
+- name: "Create volume group"
+  community.general.lvg:
+    vg: "{{ pg_lvol.vg_name }}"
+    pvs: "{{ lvg.pv }}"
+
+- name: "Create lv"
+  community.general.lvol:
+    vg: "{{ pg_lvol.vg_name }}"
+    lv: "{{ pg_lvol.lv_name }}"
+    size: "{{ pg_lvol.size }}"
+
+- name: "Format lv"
+  community.general.filesystem:
+    dev: "/dev/{{ pg_lvol.vg_name }}/{{ pg_lvol.lv_name }}"
+    fstype: ext4
+
+- name: "Create mountpoint pgdata"
+  ansible.builtin.file:
+    state: directory
+    path: "{{ pg_lvol.path }}"
+
+- name: "Mount and add pgdata filesystem to fstab"
+  ansible.posix.mount:
+    path: "{{ pg_lvol.path }}"
+    src: "/dev/{{ pg_lvol.vg_name }}/{{ pg_lvol.lv_name }}"
+    fstype: ext4
+    state: mounted
+
+

@@ -1,0 +1,40 @@
+---
+## reverse proxy group vars
+vhosts:
+  - someserver: ## a reverse proxy entry
+    vhost_id: '001'
+    vhost_name: vhostname
+    servername: vhostname.server.fr
+    proxy_pass_url: http://ipofthehost
+    proxy_pass_port: '<port of webserver vhost>'
+    specific_directives:
+      - httpd_option_header_sameorigin.conf
+      - httpd_option_header_nosniff.conf
+      - httpd_option_disable_trace.conf
+      - httpd_option_header_nofloc.conf
+  - anotherserver: ## a reverse proxy entry
+    vhost_id: '002'
+    vhost_name: another
+    servername: another.server.fr
+    proxy_pass_url: http://ipofthehost
+    proxy_pass_port: '10002'
+    specific_directives:
+      - httpd_option_git_folder.conf
+      - httpd_option_header_sameorigin.conf
+      - httpd_option_header_nosniff.conf
+      - httpd_option_disable_trace.conf
+      - httpd_option_header_nofloc.conf
+  - again: ## a reverse proxy entry
+    vhost_id: '003'
+    vhost_name: again
+    servername: again.server.fr
+    proxy_pass_url: http://ipofthehost
+    proxy_pass_port: '8080'
+    nocanon: true
+    allowencodedslashes: 'On'
+    specific_directives:
+      - httpd_option_header_sameorigin.conf
+      - httpd_option_header_nosniff.conf
+      - httpd_option_disable_trace.conf
+      - httpd_option_header_xforward_host.conf
+      - httpd_option_header_nofloc.conf

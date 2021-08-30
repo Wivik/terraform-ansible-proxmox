@@ -1,0 +1,14 @@
+## these values are put into /etc/hosts for each vm
+hosts_vm:
+  - name: reverseproxy
+    ip: ipofreverseproxy
+  - name: webserver
+    ip: ipofwebserver
+    # (...)
+
+
+
+jenkins_pubkey: ssh-rsa ..........................
+
+node_exporter_version: latest
+

@@ -1,0 +1,11 @@
+---
+# handlers file for reverseproxy
+- name: "Reload httpd"
+  systemd:
+    name: httpd
+    state: reloaded
+
+- name: "Restart httpd"
+  systemd:
+    name: httpd
+    state: restarted

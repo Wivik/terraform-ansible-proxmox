@@ -1,0 +1,13 @@
+---
+# defaults file for postgresql
+
+pg_repo_rpm: https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+postgresql_version: 13
+pg_data_dir: /var/lib/pgsql
+
+pg_lvol:
+  vg_name: vg_pgsql
+  lv_name: "lv_pgsql_{{ postgresql_version }}"
+  size: +100%FREE
+  path: "/var/lib/pgsql"
+

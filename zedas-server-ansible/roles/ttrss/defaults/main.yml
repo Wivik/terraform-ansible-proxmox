@@ -1,0 +1,6 @@
+---
+# defaults file for ttrss
+
+ttrss_rootdir: /srv/rss
+ttrss_srcdir: /srv/rss/root
+ttrss_git_url: https://git.tt-rss.org/fox/tt-rss.git

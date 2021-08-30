@@ -1,0 +1,7 @@
+---
+# defaults file for podman
+
+podman_vg_name: vg_podman
+podman_packages: ['podman', 'podman-compose']
+podman_compose_file: container-compose.yml ## default container file for podman
+podman_dockerfile: Dockerfile ## default container file for podman

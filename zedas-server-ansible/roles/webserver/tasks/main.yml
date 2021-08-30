@@ -1,0 +1,140 @@
+---
+# tasks file for reverseproxy
+
+- name: "Ensure OS is compatible"
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family in ['RedHat']
+    fail_msg: "This role was not validated for this OS"
+
+- name: "Install required packages"
+  ansible.builtin.dnf:
+    name: "{{ webserver_packages_to_install }}"
+    state: latest
+
+# - name: "Reset php module in dnf"
+#   command: dnf module reset php
+
+- name: "Install php packages"
+  ansible.builtin.dnf:
+    name: "{{ webserver_php_packages }}"
+    enablerepo: remi
+    state: latest
+  notify: "Restart httpd"
+
+- name: "Enable pdo_pgsql module in PHP"
+  ansible.builtin.copy:
+    src: etc_php.d_20_pgsql_ini
+    dest: /etc/php.d/20-pgsql.ini
+    owner: root
+    group: root
+    mode: '0644'
+  notify: "Restart httpd"
+
+- name: "Create symlink for postgresql module and php executable"
+  ansible.builtin.file:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    state: link
+  with_items:
+    - { src: /opt/remi/php74/root/usr/lib64/php/modules/pdo_pgsql.so, dest: /usr/lib64/php/modules/pdo_pgsql.so }
+    - { src: /opt/remi/php74/root/usr/lib64/php/modules/pgsql.so, dest: /usr/lib64/php/modules/pgsql.so }
+    - { src: /opt/remi/php74/root/usr/bin/php, dest: /usr/bin/php }
+
+- name: "Setup php memory"
+  ansible.builtin.lineinfile:
+    path: /etc/opt/remi/php74/php.ini
+    regexp: '^memory_limit = '
+    line: "memory_limit = {{ webserver_php_memory }}"
+  notify:
+    - "Restart httpd"
+
+- name: "Block allow httpd listen ports in selinux"
+  block:
+    - name: "Allow httpd to listen the ports"
+      ansible.builtin.command: "semanage port -a -t http_port_t -p tcp {{ webserver_base_port }}{{ item.id }}"
+      with_items:
+        - "{{ vhosts }}"
+  rescue:
+    - name: "Catch"
+      debug:
+        msg: "OK port is already enabled"
+
+- name: "Create vhost root dirs"
+  ansible.builtin.file:
+    path: "{{ item.rootdir }}"
+    owner: apache
+    group: apache
+    state: directory
+  with_items:
+    - "{{ vhosts }}"
+
+- name: "Format disks for lvm"
+  community.general.parted:
+    device: "{{ item }}"
+    number: 1
+    state: present
+    flags: [ lvm ]
+  with_items:
+    - "{{ disks }}"
+
+- name: "Create volume group"
+  community.general.lvg:
+    vg: "{{ webserver_vg_name }}"
+    pvs: "{{ lvg.pv }}"
+
+- name: "Create vhosts lv"
+  community.general.lvol:
+    vg: "{{ webserver_vg_name }}"
+    lv: "{{ item.lv }}"
+    size: "{{ item.lv_size }}"
+  with_items:
+    - "{{ vhosts }}"
+
+- name: "Format lv"
+  community.general.filesystem:
+    dev: "/dev/{{ webserver_vg_name }}/{{ item.lv }}"
+    fstype: ext4
+  with_items:
+    - "{{ vhosts }}"
+
+- name: "Add vhosts filesystems to fstab"
+  ansible.posix.mount:
+    path: "{{ item.rootdir }}"
+    src: "/dev/{{ webserver_vg_name }}/{{ item.lv }}"
+    fstype: ext4
+    state: mounted
+  with_items:
+    - "{{ vhosts }}"
+
+- name: "Deploy vhosts"
+  ansible.builtin.template:
+    src: etc_httpd_conf_d_999-xxx.conf.j2
+    dest: "/etc/httpd/conf.d/{{ item.id }}-{{ item.name }}.conf"
+    owner: root
+    group: root
+    mode: 0644
+  with_items:
+    - "{{ vhosts }}"
+  notify:
+    - "Reload httpd"
+
+- name: "SELinux Set httpd_can_network_connect flag on and keep it persistent across reboots"
+  ansible.posix.seboolean:
+    name: httpd_can_network_connect
+    state: yes
+    persistent: yes
+
+- name: "Ensure httpd is started and enabled"
+  ansible.builtin.systemd:
+    name: httpd
+    state: started
+    enabled: yes
+
+- name: "Ensure fail2ban is started and enabled"
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: started
+    enabled: yes
+
+

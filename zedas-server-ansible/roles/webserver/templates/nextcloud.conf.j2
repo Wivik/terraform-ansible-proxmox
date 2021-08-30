@@ -1,0 +1,6 @@
+
+        <Directory "{{ item.documentroot }}/data/">
+        # just in case if .htaccess gets disabled
+            Require all denied
+        </Directory>
+

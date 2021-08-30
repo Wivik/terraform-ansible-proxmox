@@ -1,0 +1,61 @@
+---
+## webserver group vars
+vhosts:
+  - onevhost:
+    id: '001'
+    name: onevhost
+    servername: onevhost.server.fr
+    rootdir: /srv/onevhost
+    documentroot: /srv/onevhost
+    lv: lv_onevhost
+    lv_size: 2g
+  - anothervhost:
+    id: '002'
+    name: anothervhost
+    servername: anothervhost.server.fr
+    rootdir: /srv/anothervhost
+    documentroot: /srv/anothervhost/root
+    lv: lv_anothervhost
+    lv_size: 5g
+  - againanotherone:
+    id: '003'
+    name: againanotherone
+    servername: nc.zedas.fr
+    rootdir: /srv/againanotherone
+    documentroot: /srv/againanotherone
+    lv: lv_againanotherone
+    lv_size: 210g
+    specific_directives:
+      - againanotherone.conf.j2
+
+disks:
+  - /dev/sdb
+  - /dev/sdd
+
+lvg:
+  pv:
+    - /dev/sdb1
+    - /dev/sdd1
+
+
+anothervhost:
+  db_host: databasehost
+  self_url: https://anothervhost.server.fr
+  db_user: dbuser
+  db_pass: dbpaswd
+  db_name: dbname
+  db_type: pgsql
+
+## this entry contains some specific variables for nextcloud role
+nextcloud:
+  db_host: dbhost
+  db_user: dbuser
+  db_pass: dbpasswd
+  db_name: dbname
+  version: ncversion
+  servername: nc.server.fr
+  config:
+    instanceid: .........
+    passwordsalt: .........
+    secret: ....
+

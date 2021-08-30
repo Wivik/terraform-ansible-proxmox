@@ -1,0 +1,50 @@
+---
+## db server group vars
+disks:
+  - /dev/sdb
+
+lvg:
+  pv: /dev/sdb1
+
+pg_postgresq_passwd: <password generated with mkpasswd command>
+
+pg_db_name: mydb
+
+postgresql_hba_entries:
+  - {type: local, database: all, user: postgres, auth_method: peer}
+  - {type: local, database: all, user: all, auth_method: peer}
+  - {type: host, database: all, user: all, address: '127.0.0.1/32', auth_method: "{{ postgresql_auth_method }}"}
+  - {type: host, database: all, user: all, address: '::1/128', auth_method: "{{ postgresql_auth_method }}"}
+  - {type: host, database: all, user: all, address: '<myIPrange>/24', auth_method: "{{ postgresql_auth_method }}"}
+
+postgresql_restarted_state: "reloaded"
+postgresql_python_library: python3-psycopg2
+
+postgresql_databases:
+  - name: onedatabase
+    lc_collate: en_US.UTF-8
+    lc_type: en_US.UTF-8
+  - name: anotherdatabase
+
+
+postgresql_users:
+  - name: username
+    password: password
+    db: databasename
+
+# postgres_users_no_log: true
+
+postgresql_version: 13
+# postgresql_data_dir: [OS-specific]
+# postgresql_bin_path: [OS-specific]
+# postgresql_config_path: [OS-specific]
+# postgresql_daemon: [OS-specific]
+# postgresql_packages: [OS-specific]
+
+postgresql_data_dir: "/var/lib/pgsql/{{ postgresql_version }}/data"
+
+postgresql_bin_path: "/usr/pgsql-{{ postgresql_version }}/bin/postgresql-{{ postgresql_version }}-setup"
+postgresql_config_path: "/var/lib/pgsql/{{ postgresql_version }}/data"
+postgresql_daemon: "postgresql-{{ postgresql_version }}"
+
+# postgres_users_no_log: false

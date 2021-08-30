@@ -1,0 +1,10 @@
+---
+# tasks file for postgresql
+
+- name: "Allow postgresql to listen remotely"
+  ansible.builtin.lineinfile:
+    path: "/var/lib/pgsql/{{ postgresql_version }}/data/postgresql.conf"
+    insertafter: "# - Connection Settings -"
+    line: "listen_addresses = '*'"
+  notify:
+    - Restart pgsql

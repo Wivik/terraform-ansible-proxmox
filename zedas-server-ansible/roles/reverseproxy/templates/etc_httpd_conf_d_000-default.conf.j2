@@ -1,0 +1,29 @@
+# {{ ansible_managed }}
+
+<VirtualHost *:{{ reverse_http_port }}>
+	ServerName {{ reverse_default_servername }}:{{ reverse_http_port }}
+	Redirect permanent / https://blog.{{ reverse_default_servername }}
+	CustomLog /var/log/httpd/000-default_access.log common
+	ErrorLog /var/log/httpd/000-default_error.log
+</VirtualHost>
+
+<VirtualHost *:{{ reverse_https_port }}>
+	ServerAdmin {{ reverse_serveradmin }}
+	Include /etc/letsencrypt/options-ssl-apache.conf
+
+    # Encoded slashes need to be allowed
+	AllowEncodedSlashes             NoDecode
+	SSLProxyEngine On
+	SSLProxyVerify     None
+	SSLProxyCheckPeerCN Off
+	SSLProxyCheckPeerName Off
+	# keep the host
+	ServerName {{ reverse_default_servername }}:{{ reverse_https_port }}
+	Redirect permanent / https://blog.{{ reverse_default_servername }}
+	CustomLog /var/log/httpd/000-default_access.log common
+	ErrorLog /var/log/httpd/000-default_error.log
+
+    SSLCertificateFile /etc/letsencrypt/live/{{ reverse_default_servername }}/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/{{ reverse_default_servername }}/privkey.pem
+
+</VirtualHost>

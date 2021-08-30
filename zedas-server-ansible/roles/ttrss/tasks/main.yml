@@ -1,0 +1,45 @@
+---
+# tasks file for ttrss
+
+- name: "Test OS"
+  ansible.builtin.assert:
+    that:
+        - ansible_os_family in ['RedHat']
+    msg: "Unsupported OS"
+
+- name: "Install git"
+  ansible.builtin.dnf:
+    name: git
+    state: latest
+
+- name: "Apply SELinux context"
+  community.general.sefcontext:
+    target: "{{ ttrss_rootdir }}(/.*)?"
+    setype: httpd_sys_rw_content_t
+    state: present
+  register: ttrss_selinux_setcontext
+
+- name: "Clone TTRSS repo"
+  ansible.builtin.git:
+    repo: "{{ ttrss_git_url }}"
+    dest: "{{ ttrss_srcdir }}"
+
+- name: "Change owner of ttrss root dir"
+  ansible.builtin.file:
+    path: "{{ ttrss_srcdir }}"
+    state: directory
+    owner: apache
+    group: apache
+    recurse: yes
+
+- name: "Deploy config.php"
+  template:
+    src: srv_rss_config_php.j2
+    dest: "{{ ttrss_srcdir }}/config.php"
+    owner: apache
+    group: apache
+    mode: '0644'
+
+- name: "Restore SELinux context"
+  ansible.builtin.command: "restorecon -irv {{ ttrss_rootdir }}"
+  when: ttrss_selinux_setcontext.changed

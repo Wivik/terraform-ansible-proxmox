@@ -1,0 +1,7 @@
+---
+# defaults file for reverseproxy
+reverse_http_port: 80
+reverse_https_port: 443
+reverse_serveradmin: admin@server.fr
+reverse_packages_to_install: ['httpd', 'mod_ssl', 'snapd']
+reverse_default_servername: server.fr
